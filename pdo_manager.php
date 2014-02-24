@@ -7,8 +7,6 @@ class PDO_Manager {
     private $_insert_sequence_values = array();
     private $_insert_sequence_params = array();
 
-    /*  Constructor  */
-
     public function __construct($dsn, $username, $password, $encoding='utf8') {
 
         try {
@@ -145,6 +143,36 @@ class PDO_Manager {
 
         return $this->_db->lastInsertId($name);
 
+    }
+    
+    public function getNotExitsValues($table, $field, $original_values) {
+    	
+    	$returns = array();
+    	$wheres = array();
+    	$params = array();
+    	
+    	foreach ($original_values as $original_value) {
+    		
+    		$wheres[] = $field .' = ?';
+    		$params[] = $original_value;
+    		
+    	}
+    	
+    	$where = 'WHERE '. implode(' OR ', $wheres);
+    	
+    	$exists_values = $this->getDbSelect($table, $field, $where, $params);
+    	$exists_values_count = count($exists_values);
+    	
+    	for($i = 0; $i < $exists_values_count; $i++) {
+    		
+    		$target_value = $exists_values[$i][$field];
+    		$array_index = array_search($target_value, $original_values);
+    		unset($original_values[$array_index]);
+    		
+    	}
+    	
+    	return array_values($original_values);
+    	
     }
 
     public function getLastQuery() {
