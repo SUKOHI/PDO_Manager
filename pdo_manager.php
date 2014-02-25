@@ -147,7 +147,7 @@ class PDO_Manager {
 	        $values = implode(',', $insert_sequence_values);
 	        $sql = 'INSERT INTO '. $table .' ('. $fields .') VALUES '. $values;
 	        $this->query($sql, $insert_sequence_params);
-	        $this->insertDbSequenceRemove();
+	        $this->insertSequenceRemove();
 
         }
 
@@ -179,7 +179,7 @@ class PDO_Manager {
     	
     	$where = 'WHERE '. implode(' OR ', $wheres);
     	
-    	$exists_values = $this->getDbSelect($table, $field, $where, $params);
+    	$exists_values = $this->select($table, $field, $where, $params);
     	$exists_values_count = count($exists_values);
     	
     	for($i = 0; $i < $exists_values_count; $i++) {
