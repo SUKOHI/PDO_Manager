@@ -3,7 +3,7 @@
 class PDO_Manager {
 
     private $_db, $_date, $_last_query;
-    private $_queryDisplay = false;
+    private $_display = false;
     private $_insert_sequence_values = array();
     private $_insert_sequence_params = array();
 
@@ -24,11 +24,11 @@ class PDO_Manager {
 
     }
 
-    public function getDbQuery($sql, $params=array()) {
+    public function query($sql, $params=array()) {
 
         $this->last_query = $this->getPrepare($sql, $params);
 
-        if($this->_queryDisplay) {
+        if($this->_display) {
 
         	echo $this->last_query .'<hr>';
 
@@ -38,12 +38,12 @@ class PDO_Manager {
 
     }
 
-    public function getDbSelect($table, $fields='*', $where='', $params=array(), $fetch_mode=PDO::FETCH_ASSOC) {
-
+    public function select($table, $fields='*', $where='', $params=array(), $fetch_mode=PDO::FETCH_ASSOC) {
+    	
         $return = array();
-
         $sql = 'SELECT '. $fields .' FROM '. $table .' '. $where;
-        $result = $this->getDbQuery($sql, $params);
+        $result = $this->query($sql, $params);
+        
         while($row = $result->fetch($fetch_mode)) {
 
         	$return[] = $row;
@@ -53,69 +53,90 @@ class PDO_Manager {
         return $return;
 
     }
-
-    public function getDbSelectOne($table, $field, $where='', $params=array()) {
+    
+    public function selectOne($table, $field, $where='', $params=array()) {
 
         $sql = 'SELECT '. $field .' FROM '. $table .' '. $where;
-        $result = $this->getDbQuery($sql, $params);
+        $result = $this->query($sql, $params);
         $row = $result->fetch();
         return $row[0];
 
     }
-
-    public function getDbSelectCount($table, $where='', $params=array()) {
-
-        $field = 'COUNT(*)';
-        return $this->getDbSelectOne($table, $field, $where, $params);
+    
+    public function selectCount($table, $where='', $params=array(), $count_field='') {
+    	
+    	if($count_field == '') {
+    		
+    		$count_field = '*';
+    		
+    	}
+    	
+        $field = 'COUNT('. $count_field .')';
+        return $this->selectOne($table, $field, $where, $params);
 
     }
 
-    public function insertDb($table, $fields, $values, $params=array()) {
+    public function insert($table, $fields, $values, $params=array()) {
 
+    	if(is_array($values)) {
+    		
+    		$params = $values;
+    		$questions = array();
+    		
+    		foreach ($params as $value) {
+    			
+    			$questions[] = '?';
+    			
+    		}
+    		
+    		$values = implode(', ', $questions);
+    		
+    	}
+    	
         $sql = 'INSERT INTO '. $table .' ('. $fields .') VALUES ('. $values .')';
-        return $this->getDbQuery($sql, $params);
+        return $this->query($sql, $params);
 
     }
 
-    public function updateDb($table, $set_values, $where, $params=array()) {
-
+    public function update($table, $set_values, $where, $params=array()) {
+    	
         $sql = 'UPDATE '. $table .' SET '. $set_values .' '. $where;
-        return $this->getDbQuery($sql, $params);
+        return $this->query($sql, $params);
 
     }
     
-    public function deleteDb($table, $where, $params) {
+    public function delete($table, $where, $params) {
 
         if($where == '') { die('Delete: There is no WHERE phrase.'); }
 
         $sql = 'DELETE FROM '. $table .' '. $where;
-        return $this->getDbQuery($sql, $params);
+        return $this->query($sql, $params);
 
     }
 
-    public function insertSelectDb($insert_table, $insert_fields, $select_table, $select_fields, $select_where, $select_params) {
+    public function insertSelect($insert_table, $insert_fields, $select_table, $select_fields, $select_where, $select_params) {
 
         $sql = 'INSERT INTO '. $insert_table .' ('. $insert_fields .') SELECT '.
         $select_fields .' FROM '. $select_table .' '. $select_where;
-        $result = $this->getDbQuery($sql, $select_params);
+        $result = $this->query($sql, $select_params);
 
     }
 
-    public function insertDbOnDuplicateKey($table, $insert_fields, $insert_values, $update_set_values, $params=array()) {
+    public function insertOnDuplicateKey($table, $insert_fields, $insert_values, $update_set_values, $params=array()) {
 
         $sql = 'INSERT INTO '. $table .' ('. $insert_fields .') VALUES ('. $insert_values .') ON DUPLICATE KEY UPDATE '. $update_set_values;
-        return $this->getDbQuery($sql, $params);
+        return $this->query($sql, $params);
 
     }
 
-    public function insertDbSequence($values, $params) {
+    public function insertSequence($values, $params) {
 
         $this->_insert_sequence_values[] = '('. $values .')';
         $this->_insert_sequence_params = array_merge($this->_insert_sequence_params, $params);
 
     }
 
-    public function insertDbSequenceCommit($table, $fields) {
+    public function insertSequenceCommit($table, $fields) {
 
         $insert_sequence_values = $this->_insert_sequence_values;
         $insert_sequence_values_count = count($insert_sequence_values);
@@ -125,14 +146,14 @@ class PDO_Manager {
 
 	        $values = implode(',', $insert_sequence_values);
 	        $sql = 'INSERT INTO '. $table .' ('. $fields .') VALUES '. $values;
-	        $this->getDbQuery($sql, $insert_sequence_params);
+	        $this->query($sql, $insert_sequence_params);
 	        $this->insertDbSequenceRemove();
 
         }
 
     }
 
-    public function insertDbSequenceRemove() {
+    public function insertSequenceRemove() {
 
         $this->_insert_sequence_values = array();
         $this->_insert_sequence_params = array();
@@ -147,9 +168,7 @@ class PDO_Manager {
     
     public function getNotExitsValues($table, $field, $original_values) {
     	
-    	$returns = array();
-    	$wheres = array();
-    	$params = array();
+    	$returns = $wheres = $params = array();
     	
     	foreach ($original_values as $original_value) {
     		
@@ -181,30 +200,42 @@ class PDO_Manager {
 
     }
 
-    public function setQueryDisplay($flag=true) {
+    public function t($flag=true) {
+    	
+    	$this->test($flag);
+    	
+    }
+    
+    public function test($flag=true) {
 
-        $this->_queryDisplay = $flag;
+        $this->_display = $flag;
 
     }
 
     private function getPrepare($sql, $params) {
 
         $params = array_map(array($this, 'getPrepareParam'), $params);
-
-        $curpos = 0;
         $curph  = count($params)-1;
+        $start = strlen($sql)-1;
 
-        for ($i=strlen($sql)-1; $i>0; $i--) {
+        for ($i = $start; $i > 0; $i--) {
 
-          if ($sql[$i] !== '?')  continue;
-          if ($curph < 0 || !isset($params[$curph]))
-        $sql = substr_replace($sql, 'NULL', $i, 1);
-          else
-        $sql = substr_replace($sql, $params[$curph], $i, 1);
+			if ($sql[$i] !== '?')  continue;
+			if ($curph < 0 || !isset($params[$curph])) {
 
-          $curph--;
+          		$sql = substr_replace($sql, 'NULL', $i, 1);
+          	
+			} else {
+				
+				$sql = substr_replace($sql, $params[$curph], $i, 1);
+				
+			}
+        
+			$curph--;
+          
         }
-        unset($curpos, $curph, $params);
+        
+        unset($curph, $params);
         return $sql;
 
     }
@@ -217,15 +248,15 @@ class PDO_Manager {
 
         } else {
 
-        $return = addslashes($param);
-
-        if(strstr($return, '\'') || strstr($return, '"')) {
-
-            $return = str_replace(array('\'', '"'), '', $return);
-
-        }
-
-        $return = '\''. $return .'\'';
+	        $return = addslashes($param);
+	
+	        if(strstr($return, '\'') || strstr($return, '"')) {
+	
+	            $return = str_replace(array('\'', '"'), '', $return);
+	
+	        }
+	
+	        $return = '\''. $return .'\'';
 
         }
 
@@ -234,3 +265,32 @@ class PDO_Manager {
     }
 
 }
+
+/*** Sample
+
+	$pdo = new PDO_Manager(DSN, DSN_USER, DSN_PASS);
+	$pdo->test();
+	
+	// Select
+	
+	$data = $pdo->select('table', '*', 'WHERE id = ?', array(100));
+	print_r($data);
+	echo $pdo->selectOne('table', 'title', 'WHERE id = ?', array(100));
+	echo $pdo->selectCount('table', 'WHERE title = ?', array('title'), 'id');	// The last arg is skippable.
+
+	// Insert
+	
+	$pdo->insert('table', 'title, link, description', array('title', 'link', 'description'));
+	$pdo->insert('table', 'title, link, description', '?, ?, ?', array('title', 'link', 'description'));
+
+	// Update
+	
+	$pdo->update('table', 'updated = ?', 'WHERE id = ?', array(
+			time(), 100
+	));
+	
+	// Delete
+	
+	$pdo->delete('table', 'WHERE id = ?', array(100));
+
+***/
