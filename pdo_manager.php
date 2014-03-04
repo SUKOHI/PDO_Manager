@@ -2,7 +2,8 @@
 
 class PDO_Manager {
 
-    private $_db, $_date, $_last_query;
+    public $date;
+    private $_db, $_last_query;
     private $_display = false;
     private $_insert_sequence_values = array();
     private $_insert_sequence_params = array();
@@ -13,7 +14,7 @@ class PDO_Manager {
 
 	        $this->_db = new PDO($dsn, $username, $password);
 	        $this->_db->query('SET NAMES '. $encoding);
-	        $this->_date = time();
+	        $this->date = time();
 	        $this->_last_query = '';
 
         } catch (PDOException $e) {
@@ -292,5 +293,9 @@ class PDO_Manager {
 	// Delete
 	
 	$pdo->delete('table', 'WHERE id = ?', array(100));
+	
+	// Date
+	
+	echo $pdo->date;
 
 ***/
