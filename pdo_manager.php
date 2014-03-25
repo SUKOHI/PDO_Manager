@@ -86,16 +86,9 @@ class PDO_Manager {
 
 	public function insert($table, $fields, $values, $params=array()) {
 
-		if(is_array($values)) {
-			
-			$params = $values;
-			$questions = array_pad(array(), count($params), '?');
-			$values = implode(', ', $questions);
-			
-		}
-		
-		$sql = 'INSERT INTO '. $this->getTable($table) .' ('. $fields .') VALUES ('. $values .')';
-		return $this->query($sql, $params);
+		$insert_data = $this->correctInsertData($values, $params);
+		$sql = 'INSERT INTO '. $this->getTable($table) .' ('. $fields .') VALUES ('. $insert_data['values'] .')';
+		return $this->query($sql, $insert_data['params']);
 
 	}
 
@@ -113,6 +106,24 @@ class PDO_Manager {
 		$sql = 'DELETE FROM '. $this->getTable($table) .' '. $where;
 		return $this->query($sql, $params);
 
+	}
+	
+	public function beginTransaction() {
+		
+		return $this->_db->beginTransaction();
+		
+	}
+	
+	public function rollBack() {
+		
+		return $this->_db->rollBack();
+		
+	}
+	
+	public function commit() {
+		
+		return $this->_db->commit();
+		
 	}
 
 	public function insertSelect($insert_table, $insert_fields, $select_table, $select_fields, $select_where, $select_params) {
@@ -141,10 +152,11 @@ class PDO_Manager {
 
 	}
 
-	public function insertSequence($values, $params) {
+	public function insertSequence($values, $params=array()) {
 
-		$this->_insert_sequence_values[] = '('. $values .')';
-		$this->_insert_sequence_params = array_merge($this->_insert_sequence_params, $params);
+		$insert_data = $this->correctInsertData($values, $params);
+		$this->_insert_sequence_values[] = '('. $insert_data['values'] .')';
+		$this->_insert_sequence_params = array_merge($this->_insert_sequence_params, $insert_data['params']);
 
 	}
 
@@ -275,6 +287,23 @@ class PDO_Manager {
 		return $return;
 
 	}
+
+	private function correctInsertData($values, $params) {
+	
+		if(is_array($values)) {
+	
+			$params = $values;
+			$questions = array_pad(array(), count($params), '?');
+			$values = implode(', ', $questions);
+	
+		}
+	
+		return array(
+				'params' => $params,
+				'values' => $values
+		);
+	
+	}
 	
 	public function getTable($table) {
 		
@@ -332,5 +361,19 @@ class PDO_Manager {
 	// Date
 	
 	echo $pdo->date;
+	
+	// Transaction
+	
+	try {
+		
+		// Insert, update etc...
+		
+		$pdo->commit();
+		
+	} catch (PDOException $Exception) {
+		
+		$pdo->rollBack();
+		
+	}
 
 ***/
