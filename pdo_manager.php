@@ -190,31 +190,56 @@ class PDO_Manager {
 
 	}
 	
-	public function getNotExitsValues($table, $field, $original_values) {
+	public function getNotExitsValues($table, $original_data, $delimiter=':') {
 		
-		$returns = $wheres = $params = array();
-		
-		foreach ($original_values as $original_value) {
+		$returns = $wheres = $params = $value_strings = array();
+		$original_correct_data = array();
+		$fields = array();
 			
-			$wheres[] = $field .' = ?';
-			$params[] = $original_value;
+		foreach ($original_data as $field => $original_values) {
+			
+			$fields[] = $field;
+			
+			foreach ($original_values as $original_values_index => $original_value) {
+
+				$original_correct_data[$original_values_index][$field] = $original_value;
+				
+			}
+			
+		}
+		
+		foreach ($original_correct_data as $index => $original_correct_values) {
+			
+			$field_clauses = array();
+			$value_string_parts = array();
+			
+			foreach ($original_correct_values as $field => $original_correct_value) {
+				
+				$field_clauses[] = $field .' = ?';
+				$params[] = $original_correct_value;
+				$value_string_parts[] = $original_correct_value;
+				
+			}
+			
+			$value_strings[$index] = implode($delimiter, $value_string_parts);
+			$wheres[] = (count($field_clauses) > 1) ? '('. implode(' AND ', $field_clauses) .')' : implode(' AND ', $field_clauses);
 			
 		}
 		
 		$where = 'WHERE '. implode(' OR ', $wheres);
 		
-		$exists_values = $this->select($table, $field, $where, $params);
-		$exists_values_count = count($exists_values);
+		$exists_data = $this->select($table, implode(',', $fields), $where, $params);
+		$exists_data_count = count($exists_data);
 		
-		for($i = 0; $i < $exists_values_count; $i++) {
+		foreach ($exists_data as $exists_values) {
 			
-			$target_value = $exists_values[$i][$field];
-			$array_index = array_search($target_value, $original_values);
-			unset($original_values[$array_index]);
+			$exists_value_string = implode($delimiter, $exists_values);
+			$array_index = array_search($exists_value_string, $value_strings);
+			unset($original_correct_data[$array_index]);
 			
 		}
 		
-		return array_values($original_values);
+		return array_values($original_correct_data);
 		
 	}
 
@@ -356,7 +381,12 @@ class PDO_Manager {
 	
 	// Not exists values
 	
-	$pdo->getNotExitsValues($table, $field, $original_values);
+	$values = $mw->getNotExitsValues('table_name', array(
+			
+			'title' => array('title1', 'title2', 'title3'), 
+			'artist' => array('link1', 'link2', 'link3'), 
+			
+	), ':');	// $delimiter is skippable. (Default: ":")
 	
 	// Date
 	
